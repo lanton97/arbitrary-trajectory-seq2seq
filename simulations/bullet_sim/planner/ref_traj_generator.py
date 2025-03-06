@@ -18,7 +18,7 @@ from spatialmath import Polygon2, Ellipse
 import signal
 from common.util import RRTTimeoutHandler
 
-def generateArbitraryTraj(mean_obst_rad=7,obst_std=1.414, num_obstacles=5, boundary=50, dt=0.1, seed=0, v_max=0.2):
+def generateArbitraryTraj(mean_obst_rad=7,obst_std=1.414, num_obstacles=5, boundary=50, dt=0.1, seed=0, v_max=0.2, absolute_max_speed=0.5):
 
     plt.cla()
     signal.signal(signal.SIGALRM, RRTTimeoutHandler) 
@@ -61,8 +61,8 @@ def generateArbitraryTraj(mean_obst_rad=7,obst_std=1.414, num_obstacles=5, bound
         path, status = rrt.query(start=start_pos)
         # Create a trajectory from the path
         traj = trajectory.Trajectory(milestones=path.tolist())
-        #traj = path_to_trajectory(traj, vmax=0.8*v_max, velocities='auto', dt=dt/2)
-        traj = path_to_trajectory(traj, vmax=0.5, velocities='auto', dt=dt/2)
+        # Select the smaller of the vehicle max speed and the absolute max speed
+        traj = path_to_trajectory(traj, vmax=min(absolute_max_speed, v_max), velocities='auto', dt=dt/2)
  
         plt.clf()
     except Exception as exc:
