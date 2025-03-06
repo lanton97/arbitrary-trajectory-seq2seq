@@ -62,7 +62,7 @@ def generateArbitraryTraj(mean_obst_rad=7,obst_std=1.414, num_obstacles=5, bound
         # Create a trajectory from the path
         traj = trajectory.Trajectory(milestones=path.tolist())
         # Select the smaller of the vehicle max speed and the absolute max speed
-        traj = path_to_trajectory(traj, vmax=min(absolute_max_speed, v_max), velocities='auto', dt=dt/2)
+        traj = path_to_trajectory(traj, vmax=min(absolute_max_speed, v_max*0.8), velocities='auto', dt=dt/2)
  
         plt.clf()
     except Exception as exc:
