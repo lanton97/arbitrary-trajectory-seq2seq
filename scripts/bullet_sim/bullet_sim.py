@@ -39,6 +39,9 @@ parser.add_argument('--bot', dest='bot', metavar='robot', default='scout',
 parser.add_argument('--dt', dest='dt', metavar='dt', default='0.02',
                     help='Float value of dt, or 1/control frequency')
 
+parser.add_argument('--train-dt', dest='tdt', metavar='tdt', default='0.02',
+                    help='Float value of the dt we train the neural network at, or 1/control frequency')
+
 parser.add_argument('--steps', dest='steps', metavar='steps', default='3000',
                     help='Integer value for number of timesteps.')
 
@@ -67,7 +70,7 @@ preproc_func = config.preproc_list[args.preproc]
 relative_state = True if args.rs=='True' else False
 
 # Load the model using an external function
-trajModel = config.load_traj_model(args.model, args.load_path, args.save, preproc_func, relative_state)
+trajModel = config.load_traj_model(args.model, args.load_path, args.save, preproc_func, relative_state, training_dt=float(args.tdt))
 
 # Check the URDF
 if args.bot not in config.bullet_models.keys():
