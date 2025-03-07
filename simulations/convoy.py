@@ -99,6 +99,7 @@ class convoy(gym.Env):
             leaderU = self.leaderController.demand(self.traj.eval((i+self.offset - 1)*self.dt),[self.traj.eval((i+self.offset)*self.dt)], leaderNoise)(None, None, None)
 
             # Get our estimated trajectory from the tracker
+            # We note that this is cast to a vector in the wrapper to simplify type handling in the controllers
             est, covs = self.trajectory_tracker.step(obs, s, inputs[-1], leaderU, true_traj)
 
             # Sample inputs
@@ -112,7 +113,7 @@ class convoy(gym.Env):
             traj.append(self.traj.eval(i*self.dt))
             states.append(s)
             inputs.append(u(None, None, None))
-            # Get the vehickle states
+            # Debug plotting
             if debug and i > 225:
                 plt.clf()
                 # Plot the trajectories
@@ -125,25 +126,16 @@ class convoy(gym.Env):
                 plt.legend()
                 plt.show()
                 # Plot thetas
-                #plt.title('Thetas')
-                #plt.plot(n.array(states)[:,2], label='True Theta')
-                #if len(est.shape) == 4:
-                #    plt.plot(np.arctan2(est[:,2], est[:,3]), label='Pred Theta')
-                #else:
-                #    plt.plot(est[:,2], label='Pred Theta')
+                plt.title('Thetas')
+                plt.plot(n.array(states)[:,2], label='True Theta')
+                if len(est.shape) == 4:
+                    plt.plot(np.arctan2(est[:,2], est[:,3]), label='Pred Theta')
+                else:
+                    plt.plot(est[:,2], label='Pred Theta')
 
-                #plt.plot(np.arctan2(pred_st[:,1,0], pred_st[:,0,0]))
-                #plt.legend()
-                #plt.show()
-
-                plt.clf()
-                pred_st = np.array(self.trajectory_tracker.iekf.mus)
-
-                plt.plot(pred_st[:,0,2], pred_st[:,1,2], label='IEKF States')
-                plt.plot(np.array(states)[:,0], np.array(states)[:,1], label='States')
+                plt.plot(np.arctan2(pred_st[:,1,0], pred_st[:,0,0]))
                 plt.legend()
                 plt.show()
-
 
             # Break if we get close to the goal position
             if np.linalg.norm(np.array(s) - self.goal_pos) <= 5.0 or np.linalg.norm(np.array(traj[-1])- self.goal_pos) <= 5.0:

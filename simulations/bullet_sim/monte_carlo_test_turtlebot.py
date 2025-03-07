@@ -16,10 +16,6 @@ def simulation(init_state, controller, trajectory, trajectory_tracker, env, Q,R,
 
     leader_controller = PIDStub()
 
-    # Calculate the ratio we should multiply the inputs by when predicting the trajectory
-    # The seq2seq model is trained on 0.1 dt, so we need to downscale the values
-
-
     inputs = []
     states = []
     traj = np.array([trajectory.eval(i*dt) for i in range(maxSteps+offset)])
@@ -78,6 +74,7 @@ def simulation(init_state, controller, trajectory, trajectory_tracker, env, Q,R,
         leaderU = leader_controller.demand(trajectory.eval((i+offset - 1)*dt),[trajectory.eval((i+offset)*dt)], leaderNoise)(None, None, None)
 
         # Get our estimated trajectory from the tracker
+        # Cast to a vector in the wrapper
         est, covs = trajectory_tracker.step(obs, curr_state, inputs[-1], leaderU, true_traj)
         if debug and i > 90:
             plt.clf()
