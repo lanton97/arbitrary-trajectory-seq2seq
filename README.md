@@ -4,7 +4,7 @@
 
 The image below outlines the control loop for the system we are considering. The blue background rectangle highlights the components we are interested in in this context. The NN code will act as a trajectory tracker, allowing for the MPC on a manifold to select inputs to track the leaders trajectory.
 
-![control loop](figures/ControlLoop.png?raw=true)
+![control loop](figures/controlLoop.png?raw=true)
 
 The figure below depicts the basic architecture and information flow through the Seq2Seq architecture. A Transformer version of this is forthcoming.
 
