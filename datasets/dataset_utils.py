@@ -170,6 +170,7 @@ def windowToInput(window, leader_speed=True):
 
     return inp[:-1]
 
+# Select IEKF attributes for inputs
 def iekfSelect(window):
     num_points = len(window)
     num_inps = num_points // 2
@@ -177,10 +178,7 @@ def iekfSelect(window):
     features = features.to_numpy()
     return features[:-1]
 
-iekf_target_attr  = ['GlobalX', 'GlobalY', 'GlobalTh']
-iekf_target_vels  = ['v1', 'v2']
-iekf_target_obs   = ['EgoTrajX', 'EgoTrajY', 'EgoTrajTh']
-
+# construct IEKF target values
 def iekfTrgSelect(window):
     num_points = len(window)
     num_inps = num_points // 2

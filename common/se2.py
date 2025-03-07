@@ -90,21 +90,26 @@ def carat(xi):
                     [xi[2], 0,     xi[1]],
                     [0,     0,     0]])
 
-
+# Pass through a trajectory and convert it into an SE2 representation
 def convertTrajToManifolds(trajectory):
     mans = []
     for pose in trajectory:
+        # Check if this is a vector
         if len(pose.shape) == 1:
+            # Check if this is a manifold rep. vectory from the NN
             if pose.shape[0] == 4:
                 manifold = SE2(man_vec=pose.detach())
+            # Check if this is a standard R3 vector
             elif pose.shape[0] == 3:
                 manifold = SE2(vec=pose)
         else:
+            # If not, this is a matrix SE2 representation
             manifold = SE2(t_mat=pose)
         mans.append(manifold)
 
     return mans
 
+# Convert a manifold into a vector representation
 def manifoldToVector(manifold):
     x = manifold[0, 2]
     y = manifold[1, 2]
