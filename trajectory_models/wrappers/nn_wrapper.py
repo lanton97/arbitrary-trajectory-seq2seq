@@ -13,7 +13,7 @@ class NeuralNetworkWrapper(ModelWrapper):
                  nn_model,
                  target_preproc=noPreProc,
                  leader_inp=True,
-                 dt=0.02,
+                 dt=0.1,
                  train_dt=0.1
                  ):
         self.obs = []
@@ -48,9 +48,9 @@ class NeuralNetworkWrapper(ModelWrapper):
     # Get the last 100 input items for NN inputs
     @property
     def window(self):
-        us = torch.Tensor(self.us[-100:])*self.dt_ratio
+        us = torch.Tensor(self.us[-100:])#*self.dt_ratio
         obs = torch.Tensor(self.obs[-100:])
-        leader_us = torch.Tensor(self.leader_us[-100:])*self.dt_ratio
+        leader_us = torch.Tensor(self.leader_us[-100:])#*self.dt_ratio
         ths = torch.unsqueeze(obs[:,2], 1)
         if self.leader_inp:
             window = torch.cat([obs[:,:2], torch.cos(ths), torch.sin(ths), us, leader_us], axis=1)
@@ -91,11 +91,8 @@ class NeuralNetworkWrapper(ModelWrapper):
 
         refPos = self.iekf.mus[-1]
 
-        #initPos = self.iekf.translateSinglePointToCoordinateBase(egoPos, self.sys.vecToSE2(self.obs[-100]))
         initPos = self.iekf.translateSinglePointToCoordinateBase(self.iekf.mus[-99:][0], refPos, self.sys.vecToSE2(self.obs[-99]))
-        # TODO: Temporary while implementing a manifold controller
         initPos = torch.Tensor.unsqueeze(manifoldToVector(initPos), 0)
-        initPos2 = torch.Tensor.unsqueeze(torch.Tensor(global2LocalCoords(newReading, trueTraj[0])), dim=0)
         initPos = torch.Tensor.unsqueeze(initPos, 0)
 
         trg_input = self.trg_preproc(initPos)

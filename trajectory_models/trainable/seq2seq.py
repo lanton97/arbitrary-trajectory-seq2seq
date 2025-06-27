@@ -13,7 +13,7 @@ class GRUEncoderModel(nn.Module):
     def __init__(self, 
                  inputSize,
                  hiddenSize=256,
-                 num_layers=2,
+                 num_layers=1,
                  dropout_p=0.1,
                  device="cpu",
                  ):
@@ -132,7 +132,7 @@ class Seq2SeqModel(nn.Module):
         self.lower = torch.tensor([[float('-inf'), float('-inf'), -1., -1.]]).to(device)
         self.upper = torch.tensor([[float('inf'), float('inf'), 1., 1.]]).to(device)
 
-    def forward(self, x, init,):
+    def forward(self, x, init, train=False):
         # Simple pass through the encoder and decoders
         out, hidden = self.encoder(x)
         means, covs = self.decoder(out, hidden)
@@ -249,7 +249,7 @@ class skipSeq2SeqModel(nn.Module):
                  # the losses
                  meanDim=4,
                  skipSize=4,
-                 dt=0.0,
+                 dt=0.1,
                  dropout=0.1,
                  num_layer=1,
                  device="cpu"

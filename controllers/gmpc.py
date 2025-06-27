@@ -35,7 +35,7 @@ def get_coeffs2(t_mat):
     return np.array([t_mat[0,2], t_mat[1,2], np.arctan2(t_mat[1,0], t_mat[0,0])])
 
 class GeometricMPC:
-    def __init__(self, dt=0.02,relativeState=False):
+    def __init__(self, dt=0.1,relativeState=False):
         self.nState = 3  # twist error (se2 vee) R^3
         self.nControl = 2  # velocity control (v, w) R^2
         self.nTwist = 3  # twist (se2 vee) R^3
@@ -68,15 +68,15 @@ class GeometricMPC:
 
         self.ref_control = np.array(controls).T
 
-    def setup_solver(self, Q=[20000, 20000, 200], R=0.3, N=20, F=10):
+    def setup_solver(self, Q=[20000, 20000, 200], R=0.3, N=10, F=1):
         self.Q = np.diag(Q)
         self.R = R * np.diag(np.ones(self.nControl))
         self.N = N
         self.F=F
 
-    def set_control_bound(self, v_min = -2.0, v_max= 2.0, w_min = -2.0, w_max= 2.0, dv_max=0.8, dw_max=0.8):
-        self.v_min = 0.5#v_min
-        self.v_max = 0.5#v_max
+    def set_control_bound(self, v_min = -1.5, v_max= 1.5, w_min = -1.5, w_max= 1.5, dv_max=0.8, dw_max=0.8):
+        self.v_min = v_min
+        self.v_max = v_max
         self.w_min = w_min
         self.w_max = w_max
         self.dv_max = dv_max
