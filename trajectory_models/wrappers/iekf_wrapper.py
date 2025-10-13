@@ -14,8 +14,8 @@ class DualIEKFWrapper(ModelWrapper):
         self.x0 = None
         self._traj = []
         self._covs = []
-        Q = np.diag([.001, 0, .1])
-        R = np.diag([.001, .001])
+        Q = np.diag([.01, 0.01, .1])
+        R = np.diag([.01, .01])
         self.b = np.array([0,0,1])
         self.sys = MovingObserverUnicycle(Q, R, dt)
 

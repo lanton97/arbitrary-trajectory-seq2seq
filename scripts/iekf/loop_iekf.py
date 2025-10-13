@@ -8,18 +8,14 @@ from controllers.gmpc import *
 from common import util
 import os
 
-numTrials = 10
+numTrials = 100
+seed = 0
 
 path = util.generate_timestamped_path('controlEval/')
 # Run the Dual IEKF convoy without plotting
 sim = dual_iekf_convoy(control=GeometricMPC)
 
-all_states = []
-all_traj   = []
-all_pred_traj = []
-all_true_traj = []
-for i in range(numTrials):
-    sim.reset()
+def eval_seed(simulator):
     ego, leader = sim.simulate(plot=False)
     true_state, _, des_traj = ego
 
@@ -35,20 +31,19 @@ for i in range(numTrials):
     all_pred_traj.extend(pred_state)
     all_true_traj.extend(true_state)
 
+i = 0
+while i < numTrials:
+    i += 1
+    signal.signal(signal.SIGALRM, RRTTimeoutHandler) 
+    signal.alarm(800)
 
-# CTRL RMSE
-error,_ = calc_rms(all_states, all_traj)
-print('Control RMSE: ' + str(error))
+    try:
+        simulator.reset(seed, seed)
 
-# CTRL Boxminus RMSE
-error,_ = calc_box_minus_rms(all_states, all_traj)
-print('Control Boxminus RMSE: ' + str(error))
+    except Exception as exc:
+        i -= 1
+        continue
+        print(exc)
 
-# Leader Pred RMSE
-error,_ = calc_rms(all_true_traj, all_pred_traj)
-print('Leader Pred RMSE: ' + str(error))
 
-# Leader Pred Boxminus RMSE
-error,_ = calc_box_minus_rms(all_true_traj, all_pred_traj)
-print('Leader Pred Boxminus RMSE: ' + str(error))
-
+    eval_seed(simulator, seed)

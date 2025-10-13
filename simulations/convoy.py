@@ -87,7 +87,6 @@ class convoy(gym.Env):
         # Loop through for the maximum amount of time or until the goal is reached
         if debug:
             self.max_length = 250
-        #self.max_length=100
         for i in range(self.max_length):
             # Calculate the observation with noise
             obs = global2LocalCoords(s,self.traj.eval((i+self.offset)*self.dt), shiftToPiRange=False) #+ np.random.multivariate_normal(np.zeros(3), self.Q)
@@ -124,17 +123,6 @@ class convoy(gym.Env):
                 plt.title('Trajectory')
                 plt.legend()
                 plt.show()
-                # Plot thetas
-                #plt.title('Thetas')
-                #plt.plot(n.array(states)[:,2], label='True Theta')
-                #if len(est.shape) == 4:
-                #    plt.plot(np.arctan2(est[:,2], est[:,3]), label='Pred Theta')
-                #else:
-                #    plt.plot(est[:,2], label='Pred Theta')
-
-                #plt.plot(np.arctan2(pred_st[:,1,0], pred_st[:,0,0]))
-                #plt.legend()
-                #plt.show()
 
                 plt.clf()
                 pred_st = np.array(self.trajectory_tracker.iekf.mus)
@@ -166,7 +154,6 @@ class convoy(gym.Env):
         self.goal_pos = np.concatenate([positions[1], thetas[1]])
         self.trajectory_tracker.reset()
         
-        
         # Generate a map of obstacles for motion planning
         self.map = PolygonMap(workspace=[-self.bound_x,self.bound_x])
         
@@ -186,7 +173,7 @@ class convoy(gym.Env):
         path, status = rrt.query(start=self.start_pos)
         # Create a trajectory from the path
         traj = trajectory.Trajectory(milestones=path.tolist())
-        self.traj = path_to_trajectory(traj, speed=1, dt=0.1)
+        self.traj = path_to_trajectory(traj, speed=0.2, dt=0.1)
         # Reset the beginning of the path in case the rrt failed
         self.start_pos = path[0]
         # Initialize the vehicle start position

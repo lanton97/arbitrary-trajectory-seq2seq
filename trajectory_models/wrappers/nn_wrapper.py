@@ -67,7 +67,6 @@ class NeuralNetworkWrapper(ModelWrapper):
         self.leader_us.extend(leaderUs)
         self.x0 = init_pos
         self.iekf = InvariantEKF(self.sys, self.x0, np.eye(3))
-        #initPos = torch.Tensor.unsqueeze(manifoldToVector(init_pos), 0)
         initPos = np.expand_dims(init_pos, 0)
         initPos = np.expand_dims(initPos, 0)
         initPos = torch.Tensor(initPos)
@@ -96,7 +95,6 @@ class NeuralNetworkWrapper(ModelWrapper):
         initPos = torch.Tensor.unsqueeze(initPos, 0)
 
         trg_input = self.trg_preproc(initPos)
-
 
         # Get our NN outputs
         self._traj, self._covs = self.model(self.window, trg_input)

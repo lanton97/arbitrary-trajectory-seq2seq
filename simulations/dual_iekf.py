@@ -182,51 +182,45 @@ class dual_iekf_convoy(gym.Env):
 
         return ego_state_pkg, leader_state_pkg
 
-    def reset(self):
-
+    def reset(self, seed=0):
         plt.cla()
-        signal.signal(signal.SIGALRM, RRTTimeoutHandler) 
-        signal.alarm(420)
-        try:
-           # Set random positions within the bounding space
-           positions = (np.random.rand(2, 2) - 0.5) * (self.bound_x -5)*2
-           thetas = np.random.rand(2,1) * 2.0 * np.pi 
-           # Make sure the positions are far apart
-           while np.linalg.norm(positions[0] - positions[1]) < 5.0 :
-               positions = (np.random.rand(2, 2) - 0.5) * self.bound_x * 2.0
-         
-           self.start_pos = np.concatenate([positions[0], thetas[0]])
-           self.goal_pos = np.concatenate([positions[1], thetas[1]])
-         
-         
-           # Generate a map of obstacles for motion planning
-           self.map = PolygonMap(workspace=[-self.bound_x,self.bound_x])
-         
-           obst_rads = np.random.normal(loc=self.mean_obst_rad, scale=self.obst_std, size=(self.num_obstacles))
-           obst_positions = (np.random.rand(2, self.num_obstacles) - 0.5) * self.bound_x * 2.0
-           for i in range(self.num_obstacles):
-               Polygon = []
-               # Create a circle from 32 points
-               for j in range(4):
-                   theta = 2*np.pi * j / 32
-                   Polygon.append((obst_positions[0,i] + obst_rads[i]*np.cos(theta), obst_positions[1,i] + obst_rads[i]*np.sin(theta)))
-               self.map.add(Polygon)
-         
-           # RRT planning for a path
-           rrt = RRTPlanner(map=self.map, vehicle=self.vehicle, npoints=400)
-           rrt.plan(goal=self.goal_pos, showsamples=True, showvalid=False)
-           path, status = rrt.query(start=self.start_pos)
-           # Create a trajectory from the path
-           traj = trajectory.Trajectory(milestones=path.tolist())
-           self.traj = path_to_trajectory(traj, speed=1, dt=0.1)
-           # Reset the beginning of the path in case the rrt failed
-           self.start_pos = path[0]
-           # Initialize the vehicle start position
-           self.vehicle.init(x0=self.start_pos)
-        except Exception as exc:
-            print(exc)
-            self.reset()
-        signal.alarm(0)
+        np.random.seed(seed)
+        random.seed(seed)
+        # Set random positions within the bounding space
+        positions = (np.random.rand(2, 2) - 0.5) * (self.bound_x -5)*2
+        thetas = np.random.rand(2,1) * 2.0 * np.pi 
+        # Make sure the positions are far apart
+        while np.linalg.norm(positions[0] - positions[1]) < 5.0 :
+            positions = (np.random.rand(2, 2) - 0.5) * self.bound_x * 2.0
+        
+        self.start_pos = np.concatenate([positions[0], thetas[0]])
+        self.goal_pos = np.concatenate([positions[1], thetas[1]])
+        
+        
+        # Generate a map of obstacles for motion planning
+        self.map = PolygonMap(workspace=[-self.bound_x,self.bound_x])
+        
+        obst_rads = np.random.normal(loc=self.mean_obst_rad, scale=self.obst_std, size=(self.num_obstacles))
+        obst_positions = (np.random.rand(2, self.num_obstacles) - 0.5) * self.bound_x * 2.0
+        for i in range(self.num_obstacles):
+            Polygon = []
+            # Create a circle from 32 points
+            for j in range(4):
+                theta = 2*np.pi * j / 32
+                Polygon.append((obst_positions[0,i] + obst_rads[i]*np.cos(theta), obst_positions[1,i] + obst_rads[i]*np.sin(theta)))
+            self.map.add(Polygon)
+        
+        # RRT planning for a path
+        rrt = RRTPlanner(map=self.map, vehicle=self.vehicle, npoints=400)
+        rrt.plan(goal=self.goal_pos, showsamples=True, showvalid=False)
+        path, status = rrt.query(start=self.start_pos)
+        # Create a trajectory from the path
+        traj = trajectory.Trajectory(milestones=path.tolist())
+        self.traj = path_to_trajectory(traj, speed=1, dt=0.1)
+        # Reset the beginning of the path in case the rrt failed
+        self.start_pos = path[0]
+        # Initialize the vehicle start position
+        self.vehicle.init(x0=self.start_pos)
 
         # return the trajectory global view and the initial state
         return self.traj, self.start_pos

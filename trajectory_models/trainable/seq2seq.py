@@ -14,7 +14,7 @@ class GRUEncoderModel(nn.Module):
                  inputSize,
                  hiddenSize=256,
                  num_layers=1,
-                 dropout_p=0.1,
+                 dropout_p=0.0,
                  device="cpu",
                  ):
         super(GRUEncoderModel, self).__init__()
@@ -105,7 +105,7 @@ class Seq2SeqModel(nn.Module):
                  encoder=GRUEncoderModel,
                  decoder=GRUDecoderModel,
                  numSteps=100,
-                 hidden_size=64,
+                 hidden_size=128,
                  # We have a default output dimension of 4 - sin(\th), cos(th) and x, y
                  # components of the homogenous transformation matrix
                  # I may try doing the whole matrix if this doesnt work with

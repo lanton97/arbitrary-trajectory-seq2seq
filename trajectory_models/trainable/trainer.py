@@ -26,7 +26,7 @@ class modelTrainer():
 
     # This loop trains the model for a given number of epochs
     # Returns the validation and training loss history
-    def train(self, train_dataloader, device, val_dataloader=None, epochs=100, lr=0.005, gamma=0.995, l2_reg=0.0001, debug=False, save_path=None, loss=BoxMinusMatNLLLoss):
+    def train(self, train_dataloader, device, val_dataloader=None, epochs=100, lr=0.001, gamma=0.995, l2_reg=0.0005, debug=False, save_path=None, loss=BoxMinusMatNLLLoss):
         # We use the Adam optimizer
         # We may change this to be configurable later
         opt = Adam(self.model.parameters(), lr=lr, weight_decay=l2_reg)

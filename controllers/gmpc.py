@@ -68,13 +68,13 @@ class GeometricMPC:
 
         self.ref_control = np.array(controls).T
 
-    def setup_solver(self, Q=[20000, 20000, 200], R=0.3, N=10, F=1):
+    def setup_solver(self, Q=[20000, 20000, 4000], R=0.3, N=10, F=1):
         self.Q = np.diag(Q)
         self.R = R * np.diag(np.ones(self.nControl))
         self.N = N
         self.F=F
 
-    def set_control_bound(self, v_min = -1.5, v_max= 1.5, w_min = -1.5, w_max= 1.5, dv_max=0.8, dw_max=0.8):
+    def set_control_bound(self, v_min = -0.3, v_max= 0.3, w_min = -0.3, w_max= 0.3, dv_max=0.1, dw_max=0.1):
         self.v_min = v_min
         self.v_max = v_max
         self.w_min = w_min
@@ -102,7 +102,8 @@ class GeometricMPC:
         curr_ref = self.ref_state[:, 0]
 
         # get x init by calculating log between current state and reference state
-        lie_state = SE2(vec=current_state).t_matrix
+        if not self.relativeState:
+            lie_state = SE2(vec=current_state).t_matrix
         if curr_ref.shape[0]==3:
             lie_des = SE2(vec=curr_ref).t_matrix.double()
         else:
