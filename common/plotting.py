@@ -165,7 +165,7 @@ def plot_state_error_viz(trajectory, covs, true_traj, vert_x_tick=[], show=True,
 
     vec_traj = np.array(vec_traj)
     true_traj = np.array(true_traj)
-    fig = plt.figure()
+    fig = plt.figure(dpi=150)
     fig.suptitle('Errors in Prediction of Trajectory Components')
     t = 0.1*np.array(range(vec_traj.shape[0]))
 
@@ -279,7 +279,7 @@ def get_min_change_x_tick(traj, delta=0.001):
     return vert_x_tick
 
 def plot_control_effort(traj, true_traj, inputs, tstep=500, show=True, save_dir='', save_suffix=''):
-    fig = plt.figure()
+    fig = plt.figure(dpi=150)
     tstep = min(inputs.shape[0], tstep)
 
     t = 0.1*np.array(range(tstep))
