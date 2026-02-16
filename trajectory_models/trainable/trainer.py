@@ -26,7 +26,7 @@ class modelTrainer():
 
     # This loop trains the model for a given number of epochs
     # Returns the validation and training loss history
-    def train(self, train_dataloader, device, val_dataloader=None, epochs=100, lr=0.001, gamma=0.995, l2_reg=0.0005, debug=False, save_path=None, loss=BoxMinusMatNLLLoss):
+    def train(self, train_dataloader, device, val_dataloader=None, epochs=100, lr=0.001, gamma=0.995, l2_reg=0.0005, debug=False, save_path=None, loss=BoxMinusMatNLLLoss, cov_targets=False):
         # We use the Adam optimizer
         # We may change this to be configurable later
         opt = Adam(self.model.parameters(), lr=lr, weight_decay=l2_reg)
@@ -76,11 +76,16 @@ class modelTrainer():
                 pred_means, pred_cov = self.model(x,target_input, train=not self.iekfTrg)
 
                 # Reshape output into means and covariance matrices
-                q_hat = self.constructMeans(pred_means)
-                cov = self.constructCovariances(pred_cov)
+
+                if cov_targets:
+                    q_hat = self.constructMeans(pred_means)
+                    cov = self.constructCovariances(pred_cov)
              
-                # Calculate the loss
-                loss = l(q, pred_means, cov, device)
+                    # Calculate the loss
+                    loss = l(q, pred_means, cov, device)
+                else:
+                    loss = l(q, pred_means)
+
 
                 # Backpropagate the error
                 opt.zero_grad()
@@ -119,7 +124,7 @@ class modelTrainer():
                 self.saveModel(save_path, 'best_')
 
             # Get our validation loss
-            val_loss = self.validate(val_dataloader, l, device)
+            val_loss = self.validate(val_dataloader, l, device, cov_targets=cov_targets)
             if save_path is not None and val_loss < best_val_loss:
                 best_val_loss = val_loss
                 self.saveModel(save_path, 'val_')
@@ -136,7 +141,7 @@ class modelTrainer():
         return losses, val_losses
 
     # This function calculates the loss on the validation set without updating weights
-    def validate(self, val_dataloader, l, device):
+    def validate(self, val_dataloader, l, device, cov_targets=False):
         val_loss = 0
         self.model.eval()
         # Run validation if we have allocated a dataloader for it
@@ -149,17 +154,20 @@ class modelTrainer():
                 else:
                     x, q = batch[0].type(torch.float32).to(device), batch[1].type(torch.float32).to(device)
                     target_input = self.trgPreproc(q)
-
               
                 # Obtain output
                 pred_means, pred_cov = self.model(x,target_input)
                 # Reshape output into means and covariance matrices
-                q_hat = self.constructMeans(pred_means)
-                cov = self.constructCovariances(pred_cov)
+
+                if cov_targets:
+                    q_hat = self.constructMeans(pred_means)
+                    cov = self.constructCovariances(pred_cov)
+             
+                    # Calculate the loss
+                    loss = l(q, pred_means, cov, device)
+                else:
+                    loss = l(q, pred_means)
               
-                # Calculate the loss
-                loss = l(q, pred_means, cov, device)
-                #loss = l(q, pred_means)
                 val_loss += loss.item()/len(val_dataloader)
                 del x, q
             if device == 'mps':

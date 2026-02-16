@@ -30,8 +30,8 @@ preproc_out_size = {'noPreProc':3,
                     }
 
 # Implemented box-minus losses for training
-loss_list = {'box-minus-NLL': BoxMinusMatNLLLoss,
-             'box-minus-MSE': BoxMinusMSELoss,
+loss_list = {'BoxMinusNLL': BoxMinusMatNLLLoss,
+             'BoxMinusMSE': BoxMinusMSELoss,
              'MSE': MSELoss
              }
 

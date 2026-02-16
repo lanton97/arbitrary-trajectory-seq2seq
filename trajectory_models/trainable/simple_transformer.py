@@ -29,7 +29,7 @@ class PositionalEncoding(nn.Module):
           
 
 class TransAm(nn.Module):
-    def __init__(self, input_dim=6, feature_size=100,num_layers=2,hidden_size=64,dropout=0.1, mean_dim=4, device="cpu", skipSize=None):
+    def __init__(self, input_dim=6, feature_size=100,num_layers=1,hidden_size=64,dropout=0.1, mean_dim=3, device="cpu", skipSize=None):
         super(TransAm, self).__init__()
         self._model_name = 'SimpleTransformer'
         self.input_embedding  = nn.Linear(input_dim,feature_size)
@@ -41,27 +41,17 @@ class TransAm(nn.Module):
         self.pos_encoder = PositionalEncoding(feature_size)
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=10, dropout=dropout, dim_feedforward=hidden_size, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)
-        self.decoder = nn.Linear(feature_size,feature_size)
+        self.decoder = nn.Linear(feature_size,mean_dim)
         self.init_weights()
 
         self.mean_output_head = nn.Sequential(
             nn.Linear(feature_size, 128),
             nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.ReLU(),
             nn.Linear(128, mean_dim),
         )
 
-        self.cov_output_head = nn.Sequential(
-            nn.Linear(feature_size, 128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Linear(128, self.covDim),
-        )
-
-        self.lower = torch.tensor([[float('-inf'), float('-inf'), -1., -1.]]).to(device)
-        self.upper = torch.tensor([[float('inf'), float('inf'), 1., 1.]]).to(device)
+        self.lower = torch.tensor([[float('-inf'), float('-inf'), -1.]]).to(device)
+        self.upper = torch.tensor([[float('inf'), float('inf'), 1.]]).to(device)
 
     def init_weights(self):
         initrange = 0.1    
@@ -79,10 +69,8 @@ class TransAm(nn.Module):
         src = self.pos_encoder(src)
         output = self.transformer_encoder(src,self.src_mask)#, self.src_mask)
         output = self.decoder(output)
-        mean = self.mean_output_head(output)
-        cov  = self.cov_output_head(output)
-        mean =  torch.max(torch.min(mean, self.upper), self.lower)
-        return mean, cov
+        mean =  torch.max(torch.min(output, self.upper), self.lower)
+        return mean, None
 
     def _generate_square_subsequent_mask(self, sz):
         mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
