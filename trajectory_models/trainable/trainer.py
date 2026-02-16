@@ -69,7 +69,7 @@ class modelTrainer():
 
                     target_input = self.trgPreproc(trg)
                 else:
-                    x, q = batch[0], batch[1]
+                    x, q = batch[0].type(torch.float32), batch[1].type(torch.float32)
                     target_input = self.trgPreproc(q)
 
                 # Obtain output

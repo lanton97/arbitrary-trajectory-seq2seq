@@ -29,7 +29,7 @@ class PositionalEncoding(nn.Module):
           
 
 class TransAm(nn.Module):
-    def __init__(self, input_dim=6, feature_size=100,num_layers=2,hidden_size=64,dropout=0.1, mean_dim=4, device="cpu"):
+    def __init__(self, input_dim=6, feature_size=100,num_layers=2,hidden_size=64,dropout=0.1, mean_dim=4, device="cpu", skipSize=None):
         super(TransAm, self).__init__()
         self._model_name = 'SimpleTransformer'
         self.input_embedding  = nn.Linear(input_dim,feature_size)
@@ -68,7 +68,7 @@ class TransAm(nn.Module):
         self.decoder.bias.data.zero_()
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
-    def forward(self,src):
+    def forward(self,src, trg=None, train=False):
         # src with shape (input_window, batch_len, 1)
         if self.src_mask is None or self.src_mask.size(0) != src.shape[1]:
             device = src.device
@@ -94,12 +94,12 @@ class TransAm(nn.Module):
         return self._model_name
 
 class skipTransAm(nn.Module):
-    def __init__(self, input_dim=6, feature_size=30,num_layers=5,hidden_size=32,dropout=0.3, mean_dim=4, skip_size=3, dt=0.1, device="cpu"):
-        super(SkipTransAm, self).__init__()
+    def __init__(self, input_dim=6, feature_size=30,num_layers=5,hidden_size=32,dropout=0.3, mean_dim=4, skipSize=3, dt=0.1, device="cpu"):
+        super(skipTransAm, self).__init__()
         self._model_name = 'SkipSimpleTransformer'
         self.dt=dt
         self.input_embedding  = nn.Linear(input_dim,feature_size)
-        self.start_pos_embedding = nn.Linear(skip_size,feature_size)
+        self.start_pos_embedding = nn.Linear(skipSize,feature_size)
         self.src_mask = None
         self.meanDim = mean_dim
         self.covDim = int(mean_dim + mean_dim*(mean_dim - 1) / 2)
@@ -135,7 +135,7 @@ class skipTransAm(nn.Module):
         self.decoder.bias.data.zero_()
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
-    def forward(self,src, trg):
+    def forward(self,src, trg, skip_size):
         # src with shape (input_window, batch_len, 1)
         if self.src_mask is None or self.src_mask.size(0) != src.shape[1]:
             device = src.device
