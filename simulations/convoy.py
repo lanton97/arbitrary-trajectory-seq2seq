@@ -16,7 +16,9 @@ import random
 class convoy(gym.Env):
 
     # Create a 50 x 50 unit space for reach avoid games
-    def __init__(self, trajectory_tracker, controller, Q, R, maxSteps=1500, leader_inps=True):
+    def __init__(self, trajectory_tracker, controller, Q, R, maxSteps=1500, leader_inps=True, disturbance_type=None, noise_type='normal'):
+        self.disturbance_type = disturbance_type
+        self.noise_type=noise_type
 
         # Magnitude of the bounds
         self.bound_x = 100.0
@@ -89,7 +91,13 @@ class convoy(gym.Env):
             self.max_length = 250
         for i in range(self.max_length):
             # Calculate the observation with noise
-            obs = global2LocalCoords(s,self.traj.eval((i+self.offset)*self.dt), shiftToPiRange=False) #+ np.random.multivariate_normal(np.zeros(3), self.Q)
+            obs = global2LocalCoords(s,self.traj.eval((i+self.offset)*self.dt), shiftToPiRange=False) 
+            if self.noise_type == 'normal':
+                obs += np.random.multivariate_normal(np.zeros(3), self.Q)
+            elif self.noise_type == 'uniform':
+                obs += np.random.uniform(low=-0.2, high=0.2)
+            elif self.noise_type == 'anisotropic':
+                obs += np.random.multivariate_normal(np.zeros(3), self.Q) * np.array([1.0, 3.0])
 
             # Get the true trajectory(used for tracking and stubs)
             true_traj = [self.traj.eval((j)*self.dt) for j in range(i, i+100)]
@@ -138,6 +146,8 @@ class convoy(gym.Env):
                 break
 
         return np.array(states), np.array(inputs), np.array(traj)
+
+    
 
     def reset(self, seed=0):
         plt.cla()
