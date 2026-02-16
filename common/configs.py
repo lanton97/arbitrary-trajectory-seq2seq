@@ -1,6 +1,5 @@
 from trajectory_models.trainable import *
 from trajectory_models.trainable.losses import *
-from simulations.bullet_sim.utils.enum_class import EnvType
 from common.preproc import noPreProc, convertToCosSin
 from controllers import *
 from trajectory_models.wrappers import *
@@ -48,9 +47,6 @@ model_wrapper_list = {'stub': StubWrapper,
                       'iekf': DualIEKFWrapper,
                       }
 
-bullet_models = { 'turtle' : EnvType.TURTLEBOT,
-                 'scout': EnvType.SCOUT_MINI
-        }
 
 # Load a trajectory model and handle the varying inputs
 # Returns the loaded and configured model
