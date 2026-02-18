@@ -13,7 +13,8 @@ from torch.nn import MSELoss
 model_list={'SkipSeq2Seq':skipSeq2SeqModel,
             'Seq2Seq':Seq2SeqModel,
             'Transformer': TransAm,
-            'SkipTransformer': skipTransAm
+            'SkipTransformer': skipTransAm,
+            'RNN': SimpleRNNModel
         }
 
 # Models including a skip transformer
@@ -32,7 +33,7 @@ preproc_out_size = {'noPreProc':3,
 # Implemented box-minus losses for training
 loss_list = {'BoxMinusNLL': BoxMinusMatNLLLoss,
              'BoxMinusMSE': BoxMinusMSELoss,
-             'MSE': MSELoss
+             'MSE': MSELoss,
              }
 
 # A list of state-feedback controllers
@@ -60,19 +61,3 @@ def load_traj_model(model_name, load_path, load_name, preproc_func, relative_sta
     if model_name=='iekf':
         return model_wrapper_list[model_name](dt=dt)
 
-# Given a name for an RL agent, an environment name, and a loaded model, construct the running
-# A\agent that trains the requested RL agent
-# Q and R correspond with noise for the states and inputs, respectively
-def load_rl_agent(agent_name, env_name, model, Q, R, preproc): 
-    agent = None
-    env = env_list[env_name](model, Q, R)
-    if agent_name in sb_agents:
-        env = Monitor(env)
-        print(env)
-        agent = agent_list[agent_name]('MlpPolicy', env, verbose=1, buffer_size=100000)
-    else:
-        agent = agent_list[agent_name](env, model)  
-
-    return agent, env
-
-                      
