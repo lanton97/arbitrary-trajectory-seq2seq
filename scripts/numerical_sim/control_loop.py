@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(description='This script handles evaluating the
 parser.add_argument('--model', dest='model', metavar='model_name', default='neural-net',
                     help='Name of the model we wish to use. Valid options include ' + str(config.model_wrapper_list.keys()))
 
-parser.add_argument('--control', dest='control', metavar='controller', default='pid',
+parser.add_argument('--control', dest='control', metavar='controller', default='gmpc',
                     help='Name of the controller we wish to use. Valid options include ' + str(config.controller_list.keys()))
 
 parser.add_argument('--dev', dest='dev', metavar='dev', default='cpu',
@@ -35,7 +35,17 @@ parser.add_argument('--debug', dest='debug', metavar='debug', default='False',
 parser.add_argument('--save-type', dest='save', metavar='save', default='val_',
                     help='Prefix for the saved model from val_ (for best validation loss), best_ (for best training loss) and \'\' for the final weights.')
 
+parser.add_argument('--disturbance-type', dest='disturbance_type', metavar='disturbance_type', default=None,
+                    help='Type of disturbance to apply: "constant" or "steering_bias" or None.')
+
+parser.add_argument('--disturbance-value', dest='disturbance_value', metavar='disturbance_value', default="0.1,0.0,0.0",
+                    help='Value for the disturbance. For constant: comma-separated (e.g. "0.1,0.0"). For steering_bias: float.')
+
+parser.add_argument('--noise-type', dest='noise_type', metavar='noise_type', default='normal',
+                    help='Type of observation noise: "normal", "uniform", or "anisotropic".')
+
 args = parser.parse_args()
+
 
 np.random.seed(0)
 random.seed(0)
@@ -82,11 +92,24 @@ Q = np.array([[0.02, 0.0, 0.0],
 R = np.array([[0.02, 0.0],
               [0.0,  0.02]])
 
+# Parse disturbance_value if provided
+if args.disturbance_value is not None:
+    if args.disturbance_type == 'constant':
+        disturbance_value = np.array([float(x) for x in args.disturbance_value.split(',')])
+    elif args.disturbance_type == 'steering_bias':
+        disturbance_value = float(args.disturbance_value)
+    else:
+        disturbance_value = None
+else:
+    disturbance_value = None
 
 
 # Initialize the simulation
-simulator = convoy(trajModel, control, Q, R)
-simulator.reset()
+simulator = convoy(trajModel, control, Q, R,
+                  disturbance_type=args.disturbance_type, 
+                  disturbance_value=disturbance_value,
+                  noise_type=args.noise_type)
+simulator.reset(seed=10)
 simulator.init()
 
 # Run the simulator for a trajectory

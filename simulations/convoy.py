@@ -16,9 +16,10 @@ import random
 class convoy(gym.Env):
 
     # Create a 50 x 50 unit space for reach avoid games
-    def __init__(self, trajectory_tracker, controller, Q, R, maxSteps=1500, leader_inps=True, disturbance_type=None, noise_type='normal'):
+    def __init__(self, trajectory_tracker, controller, Q, R, maxSteps=1500, leader_inps=True, disturbance_type=None, noise_type='normal', disturbance_value=None):
         self.disturbance_type = disturbance_type
-        self.noise_type=noise_type
+        self.noise_type = noise_type
+        self.disturbance_value = disturbance_value
 
         # Magnitude of the bounds
         self.bound_x = 100.0
@@ -78,7 +79,7 @@ class convoy(gym.Env):
         self.trajectory_tracker.push_init(self.start_pos, egoView, us, leaderUs)
 
     # Run the simulations and return the givven inputs
-    def simulate(self, debug=False):
+    def simulate(self, debug=True):
         states = []
         initInput = np.array([0.0,0.0])
         inputs = [initInput]
@@ -86,6 +87,19 @@ class convoy(gym.Env):
         leaderNoise = np.array([[0.0, 0.0],
                                 [0.0,0.0]])
         s = self.vehicle._x
+        # Setup disturbance values
+        constant_disturbance = np.zeros(2)
+        steering_bias = 0.0
+        if self.disturbance_type == 'constant':
+            if self.disturbance_value is not None:
+                constant_disturbance = np.array(self.disturbance_value)
+            else:
+                constant_disturbance = np.array([0.01, 0.0])  # default
+        elif self.disturbance_type == 'steering_bias':
+            if self.disturbance_value is not None:
+                steering_bias = float(self.disturbance_value)
+            else:
+                steering_bias = 0.1  # default
         # Loop through for the maximum amount of time or until the goal is reached
         if debug:
             self.max_length = 250
@@ -97,7 +111,7 @@ class convoy(gym.Env):
             elif self.noise_type == 'uniform':
                 obs += np.random.uniform(low=-0.2, high=0.2)
             elif self.noise_type == 'anisotropic':
-                obs += np.random.multivariate_normal(np.zeros(3), self.Q) * np.array([1.0, 3.0])
+                obs += np.random.multivariate_normal(np.zeros(3), self.Q) * np.array([1.0, 3.0, 1.0])
 
             # Get the true trajectory(used for tracking and stubs)
             true_traj = [self.traj.eval((j)*self.dt) for j in range(i, i+100)]
@@ -110,15 +124,23 @@ class convoy(gym.Env):
 
             # Sample inputs
             u   = self.controller.demand(s, est, noise=np.zeros((2,2)))#self.R)
+            # Apply disturbances
+            u_val = u(None, None, None)
+            if self.disturbance_type == 'steering_bias':
+                u_val = u_val.copy()
+                u_val[1] += steering_bias
             # Step the vehicle model according to our input
-            odo = self.vehicle.step(u)
+            odo = self.vehicle.step(u_val)
 
             s = deepcopy(self.vehicle._x)
+            # Apply constant disturbance directly to the state
+            if self.disturbance_type == 'constant':
+                s = s + constant_disturbance
             s[2] = wrap(s[2])
             # Track the states, etc.
             traj.append(self.traj.eval(i*self.dt))
             states.append(s)
-            inputs.append(u(None, None, None))
+            inputs.append(u_val)
             # Get the vehickle states
             if debug and i > 225:
                 plt.clf()

@@ -90,7 +90,7 @@ class NeuralNetworkWrapper(ModelWrapper):
 
         refPos = self.iekf.mus[-1]
 
-        initPos = self.iekf.translateSinglePointToCoordinateBase(self.iekf.mus[-99:][0], refPos, self.sys.vecToSE2(self.obs[-99]))
+        initPos = self.iekf.translateSinglePointToCoordinateBase(self.iekf.mus[-100:][0], refPos, self.sys.vecToSE2(self.obs[-100]))
         initPos = torch.Tensor.unsqueeze(manifoldToVector(initPos), 0)
         initPos = torch.Tensor.unsqueeze(initPos, 0)
 
