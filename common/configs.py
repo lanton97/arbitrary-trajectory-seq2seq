@@ -14,7 +14,8 @@ model_list={'SkipSeq2Seq':skipSeq2SeqModel,
             'Seq2Seq':Seq2SeqModel,
             'Transformer': TransAm,
             'SkipTransformer': skipTransAm,
-            'RNN': SimpleRNNModel
+            'RNN': SimpleRNNModel,
+            'BiDirRNN': BiDirRNNModel
         }
 
 # Models including a skip transformer
