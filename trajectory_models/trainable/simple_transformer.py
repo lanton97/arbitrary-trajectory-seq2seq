@@ -25,6 +25,7 @@ class TransAm(nn.Module):
     def __init__(self, input_dim=6, feature_size=64, num_layers=2, hidden_size=64, dropout=0.0, mean_dim=3, device="cpu", skipSize=None):
         super(TransAm, self).__init__()
         self._model_name = 'SimpleTransformer'
+        self.prob_output = False
         self.input_embedding  = nn.Linear(input_dim, feature_size)
         self.src_mask = None
         self.meanDim = mean_dim

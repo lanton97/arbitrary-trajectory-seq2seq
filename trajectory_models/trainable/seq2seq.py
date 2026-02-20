@@ -165,6 +165,7 @@ class SkipToGRUDecoder(nn.Module):
                  dropout=0.0,
                  ):
         super(SkipToGRUDecoder, self).__init__()
+        self.prob_output = True
         self.seqLen = seqLen
         self.meanDim = meanDim
         self.covDim = covDim

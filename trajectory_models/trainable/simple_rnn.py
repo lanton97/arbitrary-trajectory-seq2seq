@@ -5,6 +5,7 @@ import math
 class SimpleRNNModel(nn.Module):
     def __init__(self, input_dim=6, hidden_size=256, num_layers=3, mean_dim=3, device="cpu", skipSize=None):
         super(SimpleRNNModel, self).__init__()
+        self.prob_output = False
         self._model_name = 'SimpleRNN'
         self.input_dim = input_dim
         self.hidden_size = hidden_size

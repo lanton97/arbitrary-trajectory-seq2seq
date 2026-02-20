@@ -22,11 +22,14 @@ class manifoldTrajectoryModel():
         trg = torch.Tensor(trg)
         trg = torch.unsqueeze(trg, 0)
         pred_means, pred_cov = self.model(inp,trg)
-        # Reshape output into means and covariance matrices
-        cov = self.constructCovariances(pred_cov)
         q_hat = torch.squeeze(pred_means)
-        cov = torch.squeeze(cov)
-        return q_hat, cov 
+        # Reshape output into means and covariance matrices
+        if self.model.prob_output:
+            cov = self.constructCovariances(pred_cov)
+            cov = torch.squeeze(cov)
+            return q_hat, cov
+
+        return q_hat, None
 
     # Calculate the covariance matrices from the pearon coefficients
     def constructCovariances(self, vec):
