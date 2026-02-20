@@ -6,42 +6,36 @@ import math
 from matplotlib import pyplot
 
 class PositionalEncoding(nn.Module):
-
     def __init__(self, d_model, max_len=5000):
-        super(PositionalEncoding, self).__init__()       
+        super(PositionalEncoding, self).__init__()
         pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        # div_term = torch.exp(
-        #     torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)
-        # )
-        div_term = 1 / (10000 ** ((2 * np.arange(d_model)) / d_model))
-        pe[:, 0::2] = torch.sin(position * div_term[0::2])
-        pe[:, 1::2] = torch.cos(position * div_term[1::2])
-
-        pe = pe.unsqueeze(0).transpose(0, 1) # [5000, 1, d_model],so need seq-len <= 5000
-        #pe.requires_grad = False
+        position = torch.arange(0, max_len).float().unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        # print(self.pe[:x.size(0), :].repeat(1,x.shape[1],1).shape ,'---',x.shape)
-        # dimension 1 maybe inequal batchsize
-        return x + self.pe[:x.size(0), :]
+        seq_len = x.size(1)
+        return x + self.pe[:, :seq_len]
           
 
 class TransAm(nn.Module):
-    def __init__(self, input_dim=6, feature_size=100,num_layers=1,hidden_size=64,dropout=0.1, mean_dim=3, device="cpu", skipSize=None):
+    def __init__(self, input_dim=6, feature_size=64, num_layers=2, hidden_size=64, dropout=0.0, mean_dim=3, device="cpu", skipSize=None):
         super(TransAm, self).__init__()
         self._model_name = 'SimpleTransformer'
-        self.input_embedding  = nn.Linear(input_dim,feature_size)
+        self.input_embedding  = nn.Linear(input_dim, feature_size)
         self.src_mask = None
         self.meanDim = mean_dim
         self.covDim = int(mean_dim + mean_dim*(mean_dim - 1) / 2)
-        self.dev=device
+        self.dev = device
 
         self.pos_encoder = PositionalEncoding(feature_size)
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=10, dropout=dropout, dim_feedforward=hidden_size, batch_first=True)
+        # nhead changed to 8 for feature_size=64
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=8, dropout=dropout, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)
-        self.decoder = nn.Linear(feature_size,mean_dim)
+        self.decoder = nn.Linear(feature_size, mean_dim)
         self.init_weights()
 
         self.mean_output_head = nn.Sequential(
@@ -50,24 +44,26 @@ class TransAm(nn.Module):
             nn.Linear(128, mean_dim),
         )
 
-        self.lower = torch.tensor([[float('-inf'), float('-inf'), -1.]]).to(device)
-        self.upper = torch.tensor([[float('inf'), float('inf'), 1.]]).to(device)
+        self.lower = torch.tensor([[float('-inf'), float('-inf'), -math.pi]]).to(device)
+        self.upper = torch.tensor([[float('inf'), float('inf'), math.pi]]).to(device)
 
     def init_weights(self):
         initrange = 0.1    
         self.decoder.bias.data.zero_()
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
-    def forward(self,src, trg=None, train=False):
+    def forward(self, src, trg=None, train=False):
         # src with shape (input_window, batch_len, 1)
         if self.src_mask is None or self.src_mask.size(0) != src.shape[1]:
             device = src.device
             mask = self._generate_square_subsequent_mask(src.shape[1]).to(device)
             self.src_mask = mask
 
-        src = self.input_embedding(src) # linear transformation before positional embedding
+        # Scale the embedding by sqrt(feature_size)
+        src = self.input_embedding(src) * math.sqrt(self.input_embedding.out_features)
         src = self.pos_encoder(src)
-        output = self.transformer_encoder(src,self.src_mask)#, self.src_mask)
+        # Pass the mask to the encoder
+        output = self.transformer_encoder(src, self.src_mask)
         output = self.decoder(output)
         mean =  torch.max(torch.min(output, self.upper), self.lower)
         return mean, None

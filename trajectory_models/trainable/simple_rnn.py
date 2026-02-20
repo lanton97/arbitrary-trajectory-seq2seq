@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 
 class SimpleRNNModel(nn.Module):
-    def __init__(self, input_dim=6, hidden_size=64, num_layers=4, mean_dim=3, device="cpu", skipSize=None):
+    def __init__(self, input_dim=6, hidden_size=256, num_layers=3, mean_dim=3, device="cpu", skipSize=None):
         super(SimpleRNNModel, self).__init__()
         self._model_name = 'SimpleRNN'
         self.input_dim = input_dim
@@ -17,8 +17,8 @@ class SimpleRNNModel(nn.Module):
         self.decoder = nn.Linear(hidden_size, mean_dim)
         self.init_weights()
 
-        self.lower = torch.tensor([[float('-inf'), float('-inf'), -1.]]).to(device)
-        self.upper = torch.tensor([[float('inf'), float('inf'), 1.]]).to(device)
+        self.lower = torch.tensor([[float('-inf'), float('-inf'), -math.pi]]).to(device)
+        self.upper = torch.tensor([[float('inf'), float('inf'), math.pi]]).to(device)
 
     def init_weights(self):
         initrange = 0.1
@@ -29,8 +29,8 @@ class SimpleRNNModel(nn.Module):
         # src: (batch, seq_len, input_dim)
         output, _ = self.rnn(src)
         output = self.decoder(output)
-        #mean = torch.max(torch.min(output, self.upper), self.lower)
-        return output, None
+        mean = torch.max(torch.min(output, self.upper), self.lower)
+        return mean, None
 
     @property
     def model_name(self):

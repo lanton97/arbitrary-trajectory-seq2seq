@@ -79,7 +79,7 @@ class convoy(gym.Env):
         self.trajectory_tracker.push_init(self.start_pos, egoView, us, leaderUs)
 
     # Run the simulations and return the givven inputs
-    def simulate(self, debug=True):
+    def simulate(self, debug=False):
         states = []
         initInput = np.array([0.0,0.0])
         inputs = [initInput]
@@ -205,7 +205,7 @@ class convoy(gym.Env):
         path, status = rrt.query(start=self.start_pos)
         # Create a trajectory from the path
         traj = trajectory.Trajectory(milestones=path.tolist())
-        self.traj = path_to_trajectory(traj, speed=0.2, dt=0.1)
+        self.traj = path_to_trajectory(traj, speed=1.0, dt=0.1)
         # Reset the beginning of the path in case the rrt failed
         self.start_pos = path[0]
         # Initialize the vehicle start position
