@@ -9,7 +9,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='This script handles training the various trajectory models.')
 
-parser.add_argument('--model', dest='model', metavar='model_name', default='SkipSeq2Seq',
+parser.add_argument('--model', dest='model', metavar='model_name', default='Seq2Seq',
                     help='Name of the model we wish to train. Valid options include ' + str(config.model_list.keys()))
 
 parser.add_argument('--ds', dest='ds', metavar='ds_name', default='datasets/convoyDS.csv',
@@ -81,7 +81,8 @@ trainer = modelTrainer(model, trgPreproc=preproc_func,iekf_trgs=iekf_trg)
 
 print('Training Model.')
 # Train model
-tr, val_scr = trainer.train(train_loader, dev, val_dataloader=val_loader,epochs=epochs, save_path=path)
+loss = config.loss_list[args.loss] 
+tr, val_scr = trainer.train(train_loader, dev, val_dataloader=val_loader,epochs=epochs, save_path=path, cov_targets=(args.loss=="BoxMinusNLL"), loss=loss)
 
 print('Saving training data.')
 util.save_training_data(path, tr)
@@ -100,13 +101,13 @@ for i in range(8):
         target_input = preproc_func(q)
 
     q_hat, pred = modelIf.getModelOutput(inp, target_input)
-    x_tick = plotting.get_min_change_x_tick(target, delta=0.01)
+    x_tick = plotting.get_min_change_x_tick(target_input, delta=0.01)
 
-    plotting.plot_trajectory(q_hat, pred, target,save_dir=path, save_suffix='tr'+str(i))
-    plotting.plot_state_viz(q_hat, pred, vert_x_tick=x_tick,save_dir=path, save_suffix='tr'+str(i))
+    plotting.plot_trajectory(q_hat, pred, target_input,save_dir=path, save_suffix='tr'+str(i))
+    #plotting.plot_state_viz(q_hat, pred, vert_x_tick=x_tick,save_dir=path, save_suffix='tr'+str(i))
 
-    plotting.plot_state_error_viz(q_hat, pred, target, vert_x_tick=x_tick,save_dir=path, save_suffix='tr'+str(i))
-    plotting.plot_true_and_pred(q_hat, pred, target, vert_x_tick=x_tick,save_dir=path, save_suffix='tr'+str(i))
+    #plotting.plot_state_error_viz(q_hat, pred, target_input, vert_x_tick=x_tick,save_dir=path, save_suffix='tr'+str(i))
+    #plotting.plot_true_and_pred(q_hat, pred, target_input, vert_x_tick=x_tick,save_dir=path, save_suffix='tr'+str(i))
 
 print('Plotting selected validation set trajectories.')
 
@@ -119,13 +120,13 @@ for i in range(8):#len(train)):
         target_input = preproc_func(q)
 
     q_hat, pred = modelIf.getModelOutput(inp, target_input)
-    x_tick = plotting.get_min_change_x_tick(target, delta=0.01)
+    #x_tick = plotting.get_min_change_x_tick(target, delta=0.01)
 
-    plotting.plot_trajectory(q_hat, pred, target,save_dir=path, save_suffix='val'+str(i))
-    plotting.plot_state_viz(q_hat, pred, vert_x_tick=x_tick,save_dir=path, save_suffix='val'+str(i))
+    plotting.plot_trajectory(q_hat, pred, target_input,save_dir=path, save_suffix='val'+str(i))
+    #plotting.plot_state_viz(q_hat, pred, vert_x_tick=x_tick,save_dir=path, save_suffix='val'+str(i))
 
-    plotting.plot_state_error_viz(q_hat, pred, target, vert_x_tick=x_tick,save_dir=path, save_suffix='val'+str(i))
-    plotting.plot_true_and_pred(q_hat, pred, target, vert_x_tick=x_tick,save_dir=path, save_suffix='val'+str(i))
+    #plotting.plot_state_error_viz(q_hat, pred, target_input, vert_x_tick=x_tick,save_dir=path, save_suffix='val'+str(i))
+    #plotting.plot_true_and_pred(q_hat, pred, target_input, vert_x_tick=x_tick,save_dir=path, save_suffix='val'+str(i))
 
 plotting.plot_rewards(tr, val_scr, show=True, y_ax_txt='Negative Log Likelihood')
 print(path)
