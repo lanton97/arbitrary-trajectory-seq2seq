@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 
 class SimpleRNNModel(nn.Module):
-    def __init__(self, input_dim=6, hidden_size=256, num_layers=3, mean_dim=3, device="cpu", skipSize=None):
+    def __init__(self, input_dim=6, hidden_size=256, num_layers=3, mean_dim=3, device="cpu", skipSize=None, dropout=0.2):
         super(SimpleRNNModel, self).__init__()
         self.prob_output = False
         self._model_name = 'SimpleRNN'
@@ -14,8 +14,9 @@ class SimpleRNNModel(nn.Module):
         self.covDim = int(mean_dim + mean_dim*(mean_dim - 1) / 2)
         self.dev = device
 
-        self.rnn = nn.GRU(input_dim, hidden_size, num_layers=num_layers, batch_first=True)
+        self.rnn = nn.GRU(input_dim, hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout)
         self.layer_norm = nn.LayerNorm(hidden_size)
+        self.dropout = nn.Dropout(dropout)
         self.decoder = nn.Linear(hidden_size, mean_dim)
         self.init_weights()
 
@@ -32,6 +33,7 @@ class SimpleRNNModel(nn.Module):
         src = src.float()
         output, _ = self.rnn(src)
         output = self.layer_norm(output)
+        output = self.dropout(output)
         output = torch.relu(output)
         output = self.decoder(output)
         mean = torch.max(torch.min(output, self.upper), self.lower)

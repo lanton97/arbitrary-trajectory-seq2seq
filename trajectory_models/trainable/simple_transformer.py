@@ -33,9 +33,10 @@ class TransAm(nn.Module):
         self.dev = device
 
         self.pos_encoder = PositionalEncoding(feature_size)
-        # nhead changed to 8 for feature_size=64
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=8, dropout=dropout, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)
+        self.layer_norm = nn.LayerNorm(feature_size)
+        self.dropout = nn.Dropout(dropout if dropout > 0 else 0.1)
         self.decoder = nn.Linear(feature_size, mean_dim)
         self.init_weights()
 
@@ -54,19 +55,17 @@ class TransAm(nn.Module):
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, src, trg=None, train=False):
-        # src with shape (input_window, batch_len, 1)
         if self.src_mask is None or self.src_mask.size(0) != src.shape[1]:
             device = src.device
             mask = self._generate_square_subsequent_mask(src.shape[1]).to(device)
             self.src_mask = mask
-
-        # Scale the embedding by sqrt(feature_size)
         src = self.input_embedding(src) * math.sqrt(self.input_embedding.out_features)
         src = self.pos_encoder(src)
-        # Pass the mask to the encoder
         output = self.transformer_encoder(src, self.src_mask)
+        output = self.layer_norm(output)
+        output = self.dropout(output)
         output = self.decoder(output)
-        mean =  torch.max(torch.min(output, self.upper), self.lower)
+        mean = torch.max(torch.min(output, self.upper), self.lower)
         return mean, None
 
     def _generate_square_subsequent_mask(self, sz):
