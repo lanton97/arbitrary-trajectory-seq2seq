@@ -13,7 +13,8 @@ class SimpleRNNModel(nn.Module):
         self.covDim = int(mean_dim + mean_dim*(mean_dim - 1) / 2)
         self.dev = device
 
-        self.rnn = nn.RNN(input_dim, hidden_size, num_layers=num_layers, batch_first=True)
+        self.rnn = nn.GRU(input_dim, hidden_size, num_layers=num_layers, batch_first=True)
+        self.layer_norm = nn.LayerNorm(hidden_size)
         self.decoder = nn.Linear(hidden_size, mean_dim)
         self.init_weights()
 
@@ -26,8 +27,11 @@ class SimpleRNNModel(nn.Module):
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, src, trg=None, train=False):
-        # src: (batch, seq_len, input_dim)
+        # Ensure input is float32
+        src = src.float()
         output, _ = self.rnn(src)
+        output = self.layer_norm(output)
+        output = torch.relu(output)
         output = self.decoder(output)
         mean = torch.max(torch.min(output, self.upper), self.lower)
         return mean, None
