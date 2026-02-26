@@ -22,7 +22,7 @@ class PositionalEncoding(nn.Module):
           
 
 class TransAm(nn.Module):
-    def __init__(self, input_dim=6, feature_size=64, num_layers=2, hidden_size=64, dropout=0.0, mean_dim=3, device="cpu", skipSize=None):
+    def __init__(self, input_dim=6, feature_size=32, num_layers=2, dropout=0.0, mean_dim=3, device="cpu", skipSize=None):
         super(TransAm, self).__init__()
         self._model_name = 'SimpleTransformer'
         self.prob_output = False
@@ -33,7 +33,7 @@ class TransAm(nn.Module):
         self.dev = device
 
         self.pos_encoder = PositionalEncoding(feature_size)
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=8, dropout=dropout, batch_first=True)
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=4, dropout=dropout, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)
         self.layer_norm = nn.LayerNorm(feature_size)
         self.dropout = nn.Dropout(dropout if dropout > 0 else 0.1)
@@ -49,24 +49,33 @@ class TransAm(nn.Module):
         self.lower = torch.tensor([[float('-inf'), float('-inf'), -math.pi]]).to(device)
         self.upper = torch.tensor([[float('inf'), float('inf'), math.pi]]).to(device)
 
+        # Input normalization parameters (default: no normalization)
+        self.register_buffer('input_mean', torch.zeros(input_dim))
+        self.register_buffer('input_std', torch.ones(input_dim))
+
+    def set_normalization(self, mean, std):
+        self.input_mean = torch.tensor(mean, dtype=torch.float32, device=self.dev)
+        self.input_std = torch.tensor(std, dtype=torch.float32, device=self.dev)
+
     def init_weights(self):
         initrange = 0.1    
         self.decoder.bias.data.zero_()
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, src, trg=None, train=False):
+        # Normalize inputs
+        src = (src - self.input_mean) / (self.input_std + 1e-8)
         if self.src_mask is None or self.src_mask.size(0) != src.shape[1]:
             device = src.device
             mask = self._generate_square_subsequent_mask(src.shape[1]).to(device)
             self.src_mask = mask
         src = self.input_embedding(src) * math.sqrt(self.input_embedding.out_features)
         src = self.pos_encoder(src)
-        output = self.transformer_encoder(src, self.src_mask)
+        output = self.transformer_encoder(src, None)
         output = self.layer_norm(output)
         output = self.dropout(output)
         output = self.decoder(output)
-        mean = torch.max(torch.min(output, self.upper), self.lower)
-        return mean, None
+        return output, None
 
     def _generate_square_subsequent_mask(self, sz):
         mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
