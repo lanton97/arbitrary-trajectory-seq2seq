@@ -135,6 +135,7 @@ class convoy(gym.Env):
             s = deepcopy(self.vehicle._x)
             # Apply constant disturbance directly to the state
             if self.disturbance_type == 'constant':
+                self.vehicle._x += constant_disturbance
                 s = s + constant_disturbance
             s[2] = wrap(s[2])
             # Track the states, etc.
