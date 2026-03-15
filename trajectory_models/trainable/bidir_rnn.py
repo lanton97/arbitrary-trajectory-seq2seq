@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 
 class BiDirRNNModel(nn.Module):
-    def __init__(self, input_dim=6, hidden_size=256, num_layers=3, mean_dim=3, device="cpu", skipSize=None, dropout=0.2):
+    def __init__(self, input_dim=6, hidden_size=128, num_layers=3, mean_dim=3, device="cpu", skipSize=None, dropout=0.15):
         super(BiDirRNNModel, self).__init__()
         self.prob_output = False
         self._model_name = 'BiDirRNN'

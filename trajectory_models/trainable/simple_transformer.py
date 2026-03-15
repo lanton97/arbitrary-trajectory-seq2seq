@@ -22,7 +22,7 @@ class PositionalEncoding(nn.Module):
           
 
 class TransAm(nn.Module):
-    def __init__(self, input_dim=6, feature_size=32, num_layers=2, dropout=0.0, mean_dim=3, device="cpu", skipSize=None):
+    def __init__(self, input_dim=6, feature_size=32, num_layers=4, numSteps=None,dropout=0.0, mean_dim=3, device="cpu", skipSize=None):
         super(TransAm, self).__init__()
         self._model_name = 'SimpleTransformer'
         self.prob_output = False

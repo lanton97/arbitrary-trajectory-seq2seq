@@ -41,7 +41,9 @@ class NeuralNetworkWrapper(ModelWrapper):
     @property
     def traj(self):
         if torch.is_tensor(self._traj):
-            return self._traj.detach().numpy(), self._covs.detach().numpy()
+            if self.model.prob_output:
+                return self._traj.detach().numpy(), self._covs.detach().numpy()
+            return self._traj.detach().numpy(), None
 
         return self._traj, self._covs
 

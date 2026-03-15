@@ -26,7 +26,7 @@ class modelTrainer():
 
     # This loop trains the model for a given number of epochs
     # Returns the validation and training loss history
-    def train(self, train_dataloader, device, val_dataloader=None, epochs=100, lr=0.001, gamma=0.999, l2_reg=0.000, debug=False, save_path=None, loss=BoxMinusMatNLLLoss, cov_targets=False):
+    def train(self, train_dataloader, device, val_dataloader=None, epochs=100, lr=0.001, gamma=0.995, l2_reg=0.000, debug=False, save_path=None, loss=BoxMinusMatNLLLoss, cov_targets=False):
         # We use the Adam optimizer
         # We may change this to be configurable later
         opt = Adam(self.model.parameters(), lr=lr, weight_decay=l2_reg)
@@ -86,7 +86,6 @@ class modelTrainer():
                 else:
                     loss = l(q, pred_means)
 
-
                 # Backpropagate the error
                 opt.zero_grad()
                 loss.backward()
@@ -103,7 +102,7 @@ class modelTrainer():
                 del x, q
 
             # Currently hardcoded limit for loss decrease
-            if i < 850:
+            if i < 1500:
                 scheduler.step()
 
             # Keep track of losses, clear GPU
