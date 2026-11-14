@@ -42,7 +42,7 @@ class SE2():
         if t_mat is not None:
             x = t_mat[0, 2]
             y = t_mat[1, 2]
-            th = np.arctan2(t_mat[1,0], t_mat[0,0])
+            th = np.arctan2(t_mat[1,0].detach(), t_mat[0,0].detach())
             self.vec = vector([x, y, th])
         if man_vec is not None:
             if torch.is_tensor(man_vec):

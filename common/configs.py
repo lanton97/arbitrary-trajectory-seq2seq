@@ -15,7 +15,10 @@ model_list={'SkipSeq2Seq':skipSeq2SeqModel,
             'Transformer': TransAm,
             'SkipTransformer': skipTransAm,
             'RNN': SimpleRNNModel,
-            'BiDirRNN': BiDirRNNModel
+            'RNN_SE2': SimpleRNNProbModel,
+            'Transformer_SE2': TransAmProb,
+            'BiDirRNN': BiDirRNNModel,
+            'BiDirRNN_SE2': BiDirRNNProbModel
         }
 
 # Models including a skip transformer
@@ -33,6 +36,7 @@ preproc_out_size = {'noPreProc':3,
 
 # Implemented box-minus losses for training
 loss_list = {'BoxMinusNLL': BoxMinusMatNLLLoss,
+             'BoxMinusGaussNLL': BoxMinusGaussNLLLoss,
              'BoxMinusMSE': BoxMinusMSELoss,
              'MSE': MSELoss,
              }
@@ -52,12 +56,12 @@ model_wrapper_list = {'stub': StubWrapper,
 
 # Load a trajectory model and handle the varying inputs
 # Returns the loaded and configured model
-def load_traj_model(model_name, load_path, load_name, preproc_func, relative_state, dt=0.1):
+def load_traj_model(model_name, load_path, load_name, preproc_func, relative_state, dt=0.1, delay=100):
     if model_name=='stub':
         return model_wrapper_list[model_name](relative_state=relative_state)
     if model_name=='nn' or model_name=='neural-net':
-        model = torch.load(load_path + load_name + 'model.pt')
-        model = model_wrapper_list[model_name](model, preproc_func, dt=dt)
+        model = torch.load(load_path + load_name + 'model.pt', map_location='cpu')
+        model = model_wrapper_list[model_name](model, preproc_func, dt=dt, delay=delay)
         return model
     if model_name=='iekf':
         return model_wrapper_list[model_name](dt=dt)

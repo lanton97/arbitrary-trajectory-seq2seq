@@ -135,7 +135,7 @@ class skipTransAm(nn.Module):
             mask = self._generate_square_subsequent_mask(src.shape[1]+1).to(device)
             self.src_mask = mask
 
-        init_states = self.get_init_states(src).to(self.dev)
+        init_states = self.get_init_states(src).to(src.device)
         init_states = torch.unsqueeze(trg[:,0,:], 1)
         init_projection = self.start_pos_embedding(init_states)
 
@@ -148,7 +148,7 @@ class skipTransAm(nn.Module):
         #cov  = self.cov_output_head(output)
         mean = output[:,:,:self.meanDim]
         cov = output[:,:,-self.covDim:]
-        mean =  torch.max(torch.min(mean, self.upper), self.lower)
+        mean =  torch.max(torch.min(mean, self.upper.to(mean.device)), self.lower.to(mean.device))
         return mean, cov
 
     def _generate_square_subsequent_mask(self, sz):
@@ -164,11 +164,37 @@ class skipTransAm(nn.Module):
     # Get the displacement from the initial state to the ego point using proprioceptive info(velocity)
     def get_init_states(self, x):
         init_ego_views = x[:,0,:]
-        pos = torch.zeros(x.shape[0], 3).to(self.dev)
+        pos = torch.zeros(x.shape[0], 3, device=x.device)
         for t in range(x.shape[1]):
-            v_t = x[:,t,-2:].to(self.dev)
+            v_t = x[:,t,-2:]
             pos[:,0] += v_t[:,0] * self.dt * torch.cos(pos[:,2])
             pos[:,1] += v_t[:,0] * self.dt * torch.sin(pos[:,2])
             pos[:,2]  = torch.remainder((pos[:,2] + v_t[:,1] * self.dt), 2*math.pi) - math.pi
 
         return torch.unsqueeze(pos, 1).detach()
+
+
+class TransAmProb(TransAm):
+    def __init__(self, input_dim=6, feature_size=32, num_layers=4, numSteps=None, dropout=0.0, mean_dim=4, device="cpu", skipSize=None):
+        super(TransAmProb, self).__init__(input_dim, feature_size=feature_size, num_layers=num_layers, numSteps=numSteps,
+                                          dropout=dropout, mean_dim=mean_dim, device=device, skipSize=skipSize)
+        self._model_name = 'SimpleTransformer_SE2'
+        self.prob_output = True
+        self.cov_decoder = nn.Linear(feature_size, self.covDim)
+        self.cov_decoder.bias.data.zero_()
+        self.cov_decoder.weight.data.uniform_(-0.1, 0.1)
+        self.lower = torch.tensor([[float('-inf'), float('-inf'), -1., -1.]]).to(device)
+        self.upper = torch.tensor([[float('inf'), float('inf'), 1., 1.]]).to(device)
+
+    def forward(self, src, trg=None, train=False):
+        src = src.float()
+        src = (src - self.input_mean) / (self.input_std + 1e-8)
+        src = self.input_embedding(src) * math.sqrt(self.input_embedding.out_features)
+        src = self.pos_encoder(src)
+        output = self.transformer_encoder(src, None)
+        output = self.layer_norm(output)
+        output = self.dropout(output)
+        mean = self.decoder(output)
+        mean = torch.max(torch.min(mean, self.upper.to(mean.device)), self.lower.to(mean.device))
+        cov = self.cov_decoder(output)
+        return mean, cov
