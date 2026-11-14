@@ -187,3 +187,73 @@ def iekfTrgSelect(window):
     obs = window[iekf_target_obs].head(num_inps + 1).to_numpy()[:-1]
     return (poses, inps, obs)
 
+
+
+def windowToDelayedInput(window, delay, leader_speed=True):
+    from common.preproc import padDelayWindow
+    num_inps = len(window) // 2
+    if delay >= num_inps:
+        return windowToInput(window, leader_speed=leader_speed)
+    ego = window[['GlobalTrueX', 'GlobalTrueY', 'GlobalTrueTh']].to_numpy()
+    lead = window[['GlobalTrajX', 'GlobalTrajY', 'GlobalTrajTh']].to_numpy()
+    ego_v = window[['v1', 'v2']].to_numpy()
+    lead_v = window[['Leaderv1', 'Leaderv2']].to_numpy()
+    rows = []
+    for j in range(num_inps - delay, num_inps):
+        lj = j - num_inps + delay
+        obs = global2LocalCoords(ego[j], lead[lj])
+        rows.append(np.concatenate([obs[:2], [np.cos(obs[2]), np.sin(obs[2])], ego_v[j], lead_v[lj]]))
+    return padDelayWindow(np.array(rows), delay, total=num_inps)
+
+
+def constructDelayedInputTargetPairs(windows, delay, leader_speed=True):
+    from common.preproc import padDelayTarget
+    targets, inputs = [], []
+    for window in windows:
+        target = calculateTrajectoryViewFromPoint(window)
+        # Use the same validity filter as the P=100 set so samples are paired across delays
+        if not isValid(target):
+            continue
+        targets.append(padDelayTarget(target, delay, total=len(target)))
+        inputs.append(windowToDelayedInput(window, delay, leader_speed=leader_speed))
+    return inputs, targets
+
+
+def constructLongDelayPairs(df, delay, windowSize=200, leader_speed=True):
+    half = windowSize // 2
+    inputs, targets = [], []
+    num_runs = getLastValue(df, 'Run')
+    for i in range(num_runs):
+        run = select_run(df, run=i).sort_values('Step')
+        num_steps = getLastValue(run, 'Step')
+        ego = run[['GlobalTrueX', 'GlobalTrueY', 'GlobalTrueTh']].to_numpy()
+        view = run[['GlobalX', 'GlobalY', 'GlobalTh']].to_numpy()
+        lead = run[['GlobalTrajX', 'GlobalTrajY', 'GlobalTrajTh']].to_numpy()
+        ego_v = run[['v1', 'v2']].to_numpy()
+        lead_v = run[['Leaderv1', 'Leaderv2']].to_numpy()
+        n = len(run)
+        for s in range(0, num_steps, windowSize):
+            if s + windowSize > num_steps:
+                break
+            t = s + half - 1
+            # Validity filter of the P=100 sample at this time point (keeps samples paired)
+            base = torch.Tensor(np.array([global2LocalCoords(view[t], lead[r], shiftToPiRange=False)
+                                          for r in range(t - half + 1, t + 1)]))
+            if not isValid(base):
+                continue
+            last_target_row = t - half + delay
+            if last_target_row >= n:
+                continue
+            rows = []
+            for j in range(t - delay + 1, t + 1):
+                je = max(j, 0)
+                lj = j - half + delay
+                ev = ego_v[je] if j >= 0 else np.zeros(2)
+                lv = lead_v[lj] if lj >= 0 else np.zeros(2)
+                obs = global2LocalCoords(ego[je], lead[max(lj, 0)])
+                rows.append(np.concatenate([obs[:2], [np.cos(obs[2]), np.sin(obs[2])], ev, lv]))
+            target = [global2LocalCoords(view[t], lead[r], shiftToPiRange=False)
+                      for r in range(t - half + 1, last_target_row + 1)]
+            inputs.append(np.array(rows))
+            targets.append(torch.Tensor(np.array(target)))
+    return inputs, targets

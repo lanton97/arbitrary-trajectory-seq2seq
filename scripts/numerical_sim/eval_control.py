@@ -23,7 +23,7 @@ parser.add_argument('--control', dest='control', metavar='controller', default='
 parser.add_argument('--dev', dest='dev', metavar='dev', default='cpu',
                     help='Device we wish to use. Using argument auto automatically selects a GPU.')
 
-parser.add_argument('--target_preproc', dest='preproc', metavar='preproc', default='noPreProc',
+parser.add_argument('--target_preproc', dest='preproc', metavar='preproc', default='CosSin',
                     help='Preprocessing used on the inital target variable for skip connections. Options include ' + str(config.preproc_list.keys()))
 
 parser.add_argument('--relative_state', dest='rs', metavar='relative_state', default='True',
@@ -34,6 +34,11 @@ parser.add_argument('--load-path', dest='load_path', metavar='load-path', defaul
 
 #parser.add_argument('--load-path', dest='load_path', metavar='load-path', default='models/skipseq2seq/skipGRUDecoder/mse/',
 #                    help='Path to the trained model we wish to use.')
+#parser.add_argument('--load-path', dest='load_path', metavar='load-path', default='models/BiDirRNN/best/',
+#                    help='Path to the trained model we wish to use.')
+
+#parser.add_argument('--load-path', dest='load_path', metavar='load-path', default='models/SimpleTransformer/best_val/',
+#                    help='Path to the trained model we wish to use.')
 
 
 parser.add_argument('--debug', dest='debug', metavar='debug', default='False',
@@ -42,18 +47,23 @@ parser.add_argument('--debug', dest='debug', metavar='debug', default='False',
 parser.add_argument('--save-type', dest='save', metavar='save', default='val_',
                     help='Prefix for the saved model from val_ (for best validation loss), best_ (for best training loss) and \'\' for the final weights.')
 
-parser.add_argument('--num-trials', dest='trials', metavar='num-trials', default='70',
+parser.add_argument('--num-trials', dest='trials', metavar='num-trials', default='20',
                     help='Integer number of trials to run.')
 
 parser.add_argument('--disturbance-type', dest='disturbance_type', metavar='disturbance_type', default=None,
                     help='Type of disturbance to apply: "constant" or "steering_bias" or None.')
-parser.add_argument('--disturbance-value', dest='disturbance_value', metavar='disturbance_value', default="0.1,0.0,0.0",
+parser.add_argument('--disturbance-value', dest='disturbance_value', metavar='disturbance_value', default="0.01,0.0,0.0",
                     help='Value for the disturbance. For constant: comma-separated (e.g. "0.1,0.0"). For steering_bias: float.')
 
 parser.add_argument('--noise-type', dest='noise_type', metavar='noise_type', default='normal',
                     help='Type of observation noise: "normal", "uniform", or "anisotropic".')
 
+parser.add_argument('--delay', dest='delay', metavar='delay', default='100',
+                    help='Leader-follower delay in steps. < 100 pads the window/horizon with no-movement values; > 100 runs the model over a D-step window and horizon.')
+
 args = parser.parse_args()
+delay = int(args.delay)
+assert delay >= 1, 'delay must be >= 1'
 
 # Validate selections for script and load everything
 # Set up training device
@@ -78,7 +88,7 @@ preproc_func = config.preproc_list[args.preproc]
 relative_state = True if args.rs=='True' else False
 
 # Load the model using an external function
-trajModel = config.load_traj_model(args.model, args.load_path, args.save, preproc_func, relative_state)
+trajModel = config.load_traj_model(args.model, args.load_path, args.save, preproc_func, relative_state, delay=delay)
 
 # Check for a valid controller
 if args.control not in config.controller_list.keys():
@@ -115,12 +125,12 @@ path = util.generate_timestamped_path('controlEval/')
 simulator = convoy(trajModel, control, Q, R, 
                   disturbance_type=args.disturbance_type, 
                   disturbance_value=disturbance_value,
-                  noise_type=args.noise_type)
+                  noise_type=args.noise_type,
+                  delay=delay)
 
 numTrials = int(args.trials)
 
-seed = 0 
-#seed = 41
+seed = 0
 all_states = []
 all_inputs = []
 all_traj   = []
@@ -141,7 +151,7 @@ def eval_seed(simulator, seed):
 i = 0
 while i < numTrials:
     signal.signal(signal.SIGALRM, RRTTimeoutHandler) 
-    signal.alarm(800)
+    signal.alarm(500)
     try:
         states, traj, inputs = eval_seed(simulator, seed)
         #all_states.append(states)

@@ -35,9 +35,34 @@ class BiDirRNNModel(nn.Module):
         output = self.dropout(output)
         output = torch.relu(output)
         output = self.decoder(output)
-        mean = torch.max(torch.min(output, self.upper), self.lower)
+        mean = torch.max(torch.min(output, self.upper.to(output.device)), self.lower.to(output.device))
         return mean, None
 
     @property
     def model_name(self):
         return self._model_name
+
+
+class BiDirRNNProbModel(BiDirRNNModel):
+    def __init__(self, input_dim=6, hidden_size=128, num_layers=3, mean_dim=4, device="cpu", skipSize=None, dropout=0.15):
+        super(BiDirRNNProbModel, self).__init__(input_dim, hidden_size=hidden_size, num_layers=num_layers,
+                                                mean_dim=mean_dim, device=device, skipSize=skipSize, dropout=dropout)
+        self.prob_output = True
+        self._model_name = 'BiDirRNN_SE2'
+        self.cov_decoder = nn.Linear(hidden_size * 2, self.covDim)
+        self.cov_decoder.bias.data.zero_()
+        self.cov_decoder.weight.data.uniform_(-0.1, 0.1)
+        # Clip sin/cos to the valid range, as in the Seq2Seq model
+        self.lower = torch.tensor([[float('-inf'), float('-inf'), -1., -1.]]).to(device)
+        self.upper = torch.tensor([[float('inf'), float('inf'), 1., 1.]]).to(device)
+
+    def forward(self, src, trg=None, train=False):
+        src = src.float()
+        output, _ = self.rnn(src)
+        output = self.layer_norm(output)
+        output = self.dropout(output)
+        output = torch.relu(output)
+        mean = self.decoder(output)
+        mean = torch.max(torch.min(mean, self.upper.to(mean.device)), self.lower.to(mean.device))
+        cov = self.cov_decoder(output)
+        return mean, cov

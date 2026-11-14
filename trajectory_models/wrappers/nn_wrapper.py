@@ -5,7 +5,7 @@ from trajectory_models.iekf.iekf import InvariantEKF
 from common.se2 import *
 import torch
 import common.util as util
-from common.preproc import noPreProc
+from common.preproc import noPreProc, padDelayWindow, setModelHorizon
 
 # Wrap the neural network model for an interface with the control loop
 class NeuralNetworkWrapper(ModelWrapper):
@@ -14,7 +14,8 @@ class NeuralNetworkWrapper(ModelWrapper):
                  target_preproc=noPreProc,
                  leader_inp=True,
                  dt=0.1,
-                 train_dt=0.1
+                 train_dt=0.1,
+                 delay=100
                  ):
         self.obs = []
         self.us = []
@@ -31,10 +32,17 @@ class NeuralNetworkWrapper(ModelWrapper):
         # Used to modulate the inputs
         self.dt_ratio = dt/train_dt
         self.offset = 100
+        # Leader-follower delay in steps. For delay < 100 the network window is built
+        # from the last `delay` steps followed by no-movement padding (padDelayWindow)
+        self.delay = delay
         self.b = np.array([0,0,1])
         self.sys = UnicycleWrapper(Q, R, dt)
         # Save a loaded NN model
         self.model = nn_model
+        # Window/horizon length: 100 steps, or the full delay when it is longer
+        self.horizon = max(100, delay)
+        if delay > 100:
+            setModelHorizon(self.model, delay)
         self.leader_inp = leader_inp
 
     # Return the trajectory and covariances
@@ -50,15 +58,18 @@ class NeuralNetworkWrapper(ModelWrapper):
     # Get the last 100 input items for NN inputs
     @property
     def window(self):
-        us = torch.Tensor(self.us[-100:])#*self.dt_ratio
-        obs = torch.Tensor(self.obs[-100:])
-        leader_us = torch.Tensor(self.leader_us[-100:])#*self.dt_ratio
+        H = self.horizon
+        us = torch.Tensor(np.array(self.us[-H:]))#*self.dt_ratio
+        obs = torch.Tensor(np.array(self.obs[-H:]))
+        leader_us = torch.Tensor(np.array(self.leader_us[-H:]))#*self.dt_ratio
         ths = torch.unsqueeze(obs[:,2], 1)
         if self.leader_inp:
             window = torch.cat([obs[:,:2], torch.cos(ths), torch.sin(ths), us, leader_us], axis=1)
         else:
             window = torch.cat([obs[:,:2], torch.cos(ths), torch.sin(ths), us], axis=1)
-        
+        if self.delay < 100:
+            window = padDelayWindow(window, self.delay, total=100)
+
         return torch.unsqueeze(window, 0)
 
     # Push the initial 100 timesteps
@@ -92,7 +103,9 @@ class NeuralNetworkWrapper(ModelWrapper):
 
         refPos = self.iekf.mus[-1]
 
-        initPos = self.iekf.translateSinglePointToCoordinateBase(self.iekf.mus[-100:][0], refPos, self.sys.vecToSE2(self.obs[-100]))
+        # Skip-connection initial state: the first pose to be visited, i.e. the leader
+        # observation from `delay` steps ago expressed in the current ego frame
+        initPos = self.iekf.translateSinglePointToCoordinateBase(self.iekf.mus[-self.delay:][0], refPos, self.sys.vecToSE2(self.obs[-self.delay]))
         initPos = torch.Tensor.unsqueeze(manifoldToVector(initPos), 0)
         initPos = torch.Tensor.unsqueeze(initPos, 0)
 

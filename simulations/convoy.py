@@ -16,7 +16,7 @@ import random
 class convoy(gym.Env):
 
     # Create a 50 x 50 unit space for reach avoid games
-    def __init__(self, trajectory_tracker, controller, Q, R, maxSteps=1500, leader_inps=True, disturbance_type=None, noise_type='normal', disturbance_value=None):
+    def __init__(self, trajectory_tracker, controller, Q, R, maxSteps=1500, leader_inps=True, disturbance_type=None, noise_type='normal', disturbance_value=None, delay=100):
         self.disturbance_type = disturbance_type
         self.noise_type = noise_type
         self.disturbance_value = disturbance_value
@@ -30,8 +30,9 @@ class convoy(gym.Env):
         self.mean_obst_rad = 7
         self.obst_std = 1.414
         self.obsts = None
-        # Timesteps ahead we record the trajectory
-        self.offset = 100
+        # Timesteps the leader is ahead of the ego vehicle (the delay P)
+        self.horizon = max(100, delay)
+        self.offset = delay
         self.dt = 0.1
         self.max_length = maxSteps
 
@@ -67,12 +68,17 @@ class convoy(gym.Env):
                                 [0.0,0.0]])
         # We are stationary for the first 100 timesteps
         u = np.array([0.0,0.0])
-        for i in range(self.offset):
+        # Always push a full horizon of history. For delay < horizon, the leader waits at
+        # the start for the first horizon - delay steps, then drives for delay steps.
+        for k in range(self.horizon):
+            i = max(k - (self.horizon - self.offset), 0)
             # Calculate obervation with noise
             egoView.append(global2LocalCoords(init_pos,self.traj.eval((i)*self.dt)))
             #egoView[i] += np.random.multivariate_normal(np.zeros(3), np.zeros(()self.Q)
             # Calculate leader inputs
             leaderU = self.leaderController.demand(self.traj.eval((i- 1)*self.dt),[self.traj.eval((i)*self.dt)], leaderNoise)(None, None, None)
+            if k < self.horizon - self.offset:
+                leaderU = np.zeros(2)
             leaderUs.append(leaderU)
             us.append(u)
         # Push initial observations into the trajectory tracker
@@ -114,7 +120,9 @@ class convoy(gym.Env):
                 obs += np.random.multivariate_normal(np.zeros(3), self.Q) * np.array([1.0, 3.0, 1.0])
 
             # Get the true trajectory(used for tracking and stubs)
-            true_traj = [self.traj.eval((j)*self.dt) for j in range(i, i+100)]
+            true_traj = [self.traj.eval((j)*self.dt) for j in range(i, i+self.offset)]
+            # Pad past the delay with the leader's current pose (no movement)
+            true_traj += [true_traj[-1]] * (self.horizon - self.offset)
 
             # Get the leader controller inputs for leader t = ego_t + 100*dt
             leaderU = self.leaderController.demand(self.traj.eval((i+self.offset - 1)*self.dt),[self.traj.eval((i+self.offset)*self.dt)], leaderNoise)(None, None, None)
