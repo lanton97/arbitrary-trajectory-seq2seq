@@ -55,6 +55,9 @@ class GeometricMPC:
         self.last_u = np.zeros(self.nControl)
 
     def set_traj(self, traj):
+        traj = np.asarray(traj)
+        if traj.shape[1] == 4:
+            traj = np.stack([traj[:, 0], traj[:, 1], np.arctan2(traj[:, 2], traj[:, 3])], axis=1)
         self.ref_state = traj.T
         self.nTraj = self.ref_state.shape[1]
         x = self.ref_state[:,0].T
