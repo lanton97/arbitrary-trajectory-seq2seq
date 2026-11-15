@@ -194,6 +194,9 @@ class convoy(gym.Env):
         self.start_pos = np.concatenate([positions[0], thetas[0]])
         self.goal_pos = np.concatenate([positions[1], thetas[1]])
         self.trajectory_tracker.reset()
+        # Controllers with internal state (rate limits, integrators) start each trial fresh
+        if hasattr(self.controller, 'reset'):
+            self.controller.reset()
         
         # Generate a map of obstacles for motion planning
         self.map = PolygonMap(workspace=[-self.bound_x,self.bound_x])
