@@ -45,19 +45,22 @@ loss_list = {'BoxMinusNLL': BoxMinusMatNLLLoss,
 controller_list = {'pid': PIDStub,
                    'mpc': SimpleMPC,
                    'gmpc': GeometricMPC,
+                   'pure_pursuit': PurePursuit,
+                   'stanley': Stanley,
         }
 
 # A list of model wrappers for the state-feedback loop
 model_wrapper_list = {'stub': StubWrapper,
                       'neural-net': NeuralNetworkWrapper,
                       'iekf': DualIEKFWrapper,
+                      'direct': LeaderObservationWrapper,
                       }
 
 
 # Load a trajectory model and handle the varying inputs
 # Returns the loaded and configured model
 def load_traj_model(model_name, load_path, load_name, preproc_func, relative_state, dt=0.1, delay=100):
-    if model_name=='stub':
+    if model_name=='stub' or model_name=='direct':
         return model_wrapper_list[model_name](relative_state=relative_state)
     if model_name=='nn' or model_name=='neural-net':
         model = torch.load(load_path + load_name + 'model.pt', map_location='cpu')
